@@ -24,13 +24,14 @@ class CustomStreamListener(tweepy.StreamListener):
         self.duration = duration
         super(tweepy.StreamListener, self).__init__()
 
-        self.db = pymongo.MongoClient().test
+        self.db = pymongo.MongoClient()
 
     def on_data(self, tweet):
         print(json.loads(tweet)['entities'])
         endtime = time.time() + float(self.duration)
         while time.time() < endtime:
-            self.filter_stream(json.loads(tweet))
+            self.save_stream(json.loads(tweet))
+        self.filter()
 
     def on_error(self, status_code):
         return True
@@ -38,7 +39,13 @@ class CustomStreamListener(tweepy.StreamListener):
     def on_timeout(self):
         return True
 
-    def filter_stream(self, param):
+    def save_stream(self, param):
+        db = self.db.twitter_auction
+        client = db['twitter_model']
+        client.insert(json.loads(param))
+
+    def filter(self):
+        print("Yes")
         pass
 
 
