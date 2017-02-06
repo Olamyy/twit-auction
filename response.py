@@ -11,9 +11,9 @@ class Response:
     @staticmethod
     def response_ok(data):
         response = {'status': 'success', 'data': data}
-        return json.dumps(response)
+        return response
 
     @staticmethod
     def response_error(message, error):
         response = {'status': 'fail', 'message': message, 'error': error}
-        return json.dumps(response)
+        return response
