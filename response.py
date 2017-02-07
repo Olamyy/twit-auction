@@ -1,5 +1,4 @@
-import flask_api
-from flask import json
+from flask import jsonify
 
 
 class Response:
@@ -14,6 +13,6 @@ class Response:
         return response
 
     @staticmethod
-    def response_error(message, error):
+    def response_error(message,error):
         response = {'status': 'fail', 'message': message, 'error': error}
-        return response
+        return jsonify(response)

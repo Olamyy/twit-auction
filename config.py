@@ -6,6 +6,14 @@ CONFIG = {
         "consumer_api_secret": "QG3ajStKJwRVPfql3B72Bc9sh7sINSbl7ouiXvrWTNLuvuQMjW"
     },
 
+    "elasticsearch": {
+        "host": "localhost",
+        "port": "9200",
+        "index": {
+            "auction": "auction-index"
+        },
+    },
+
     "queue": {
         "twitter": "TWITTER_STREAM_QUEUE",
         "tweet_filter": "STREAM_FILTER_QUEUE"

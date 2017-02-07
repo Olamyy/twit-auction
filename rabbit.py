@@ -1,5 +1,5 @@
 import pika
-from user import User
+from user import UserTwitterModel
 
 
 class RabbitMQ:
@@ -13,8 +13,8 @@ class RabbitMQ:
         self._channel.publish(exchange="", routing_key=self.queue_name, body=data)
 
     def callback(self, ch, method, properties, body):
-        user = User()
-        user.create_user(userdata=body)
+        user = UserTwitterModel()
+        user.save()
 
     def consumer(self):
         self._channel.queue_declare(self.queue_name, durable=True)

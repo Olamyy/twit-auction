@@ -1,26 +1,40 @@
 import json
-import pymongo
+
+import rabbit
+from config import CONFIG
+from elastic import Elastic
 
 
-class User:
+class UserTwitterModel:
     def __init__(self):
-        client = pymongo.MongoClient()
-        self.db = client['twitter_auction']
-        self.collection = self.db['user_']
+        self.db = Elastic()
+        self.twitter_id = ""
+        self.name = ""
+        self.screen_name = ""
+        self.profile_image = ""
+        self.campaign = ""
+        self.action = ""
 
-    def create_user(self, userdata):
-        data = json.loads(userdata)
-        user = self.collection.insert(data)
-        return user
+    def push_to_queue(self):
+        data = {
+                "twitter_id": self.twitter_id, "name": self.name,
+                "screen_name": self.screen_name,
+                "profile_image": self.profile_image,
+                "source": "twitter",
+                "action": self.action}
 
-    def update_user(self, user_id, data):
-        update = self.collection.update_one({'user_id': user_id}, data)
-        return update
+        queue_name = (CONFIG.get('queue')).get('user_service')
+        queue = rabbit.RabbitMQ(queue_name=queue_name)
+        queue.producer(data=json.dumps(data))
 
-    def get_user(self, user_id):
-        user = self.collection.find_one({'user_id': user_id})
-        return user
-
-    @staticmethod
-    def filter_user():
-        pass
+    def save(self):
+        data = {"twitter_id": self.twitter_id,
+                 "name": self.name,
+                "screen_name": self.screen_name,
+                "profile_image": self.profile_image,
+                "source": "twitter",
+                "campaign": self.campaign,
+                "action": self.action
+                }
+        self.db.insert('user', 'twitter_user', body=data)
+        self.push_to_queue()
