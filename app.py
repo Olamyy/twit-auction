@@ -1,8 +1,6 @@
 from datetime import datetime
 import time
 import tweepy
-import flask_api
-import os
 from flask import Flask
 from delorean import Delorean
 from flask import json
@@ -12,9 +10,10 @@ from flask import request
 import tools
 from response import Response
 from config import CONFIG
-import rabbit
+from rabbit import RabbitMQ
 from tweepy import OAuthHandler
 from tweepy import Stream
+import pymongo
 
 app = Flask(__name__)
 
@@ -25,23 +24,21 @@ access_token_secret = CONFIG.get('twitter').get('access_token_secret')
 
 
 class CustomStreamListener(tweepy.StreamListener):
-    def __init__(self, end):
+    def __init__(self, time_limit=None):
+        self.start_time = time.time()
+        self.limit = time_limit
         super(CustomStreamListener, self).__init__()
-        self.duration = int(end)
-        super(tweepy.StreamListener, self).__init__()
 
-    def check(self, tweet_data):
+    def on_data(self, tweet_data):
         queue_name = (CONFIG.get('queue')).get('twitter')
-        startTime = time.time()
-        print self.duration
-        duration = self.duration
-        while True:
-            # queue = rabbit.RabbitMQ(queue_name)
-            # queue.producer(tweet_data)
-            print "Received Tweet"
-            if time.time() > startTime + duration:
-                break
-            print('Done')
+        rabbit = RabbitMQ(queue_name)
+        if (time.time() - self.start_time) < self.limit:
+            print tweet_data
+            rabbit.producer(tweet_data)
+            return True
+        else:
+            rabbit.consumer()
+            return False
 
     def on_error(self, status_code):
         return True
@@ -60,7 +57,12 @@ def startStream(hashtag, end):
 
 @app.route('/')
 def index():
-    return render_template('hello.html', name="Test")
+    users = []
+    context = pymongo.MongoClient().twitterauction.users.find({})
+    for doc in context:
+        users.append(doc)
+        print users
+    return render_template('hello.html', users=users)
 
 
 @app.route('/listen', methods=['POST'])
@@ -69,34 +71,57 @@ def listen():
 
     hashtag = request_data['hashtag']
     starthour, startminute = ''.join(request_data['startTime']).split(':')
-    endhour, endminute = ''.join(request_data['endTime']).split(':')
+    hour, minute = ''.join(request_data['duration']).split(':')
 
     now = datetime.now()
 
-    if now.hour > int(starthour):
-        message = {
-            "hashtag": hashtag,
-            "starttime": "{0}:{1}".format(starthour, startminute),
-            "endTime": "{0}:{1}".format(endhour, endminute)
-        }
-        error = {"message": "Unable to listen to twitter stream at "
-                            "the provided time",
-                 "reason": "Start time has passed"
-                 }
-        return Response.response_error(message, error)
-    else:
-        if now.hour < int(starthour):
-            data = {
-                "hashtag": hashtag,
-                "startTime": "{0}:{1}".format(starthour, startminute),
-                "endTime": "{0}:{1}".format(endhour, endminute),
-                "message": "Streaming would begin by {0}:{1}".format(starthour, startminute)
-            }
-            time.sleep(int(1))
-            startStream(hashtag, tools.to_sec("{0}:{1}:{0}".format(endhour, endminute, 1)))
+    if now.hour == int(starthour):
+        print "Here"
+        print now.minute, startminute
+        if now.minute <= int(startminute):
+            print "He"
+            # time.sleep((int(startminute) - now.minute) * 60)
+            startStream(hashtag, tools.to_sec("{0}:{1}:1".format(hour, minute, 0)))
         else:
-            end_time = tools.to_sec("{0}:{1}:{1}".format(endhour, endminute, 0))
-            startStream(hashtag, end_time)
+            message = {
+                "hashtag": hashtag,
+                "starttime": "{0}:{1}".format(starthour, startminute),
+                "Duration": "{0} seconds".format(tools.to_sec("{0}:{1}:1".format(hour, minute, 0))
+                                                 )}
+            error = {"message": "Unable to listen to twitter stream at "
+                                "the provided time",
+                     "reason": "Start time has passed"
+                     }
+            return Response.response_error(message, error)
+
+    elif now.hour > int(starthour):
+            message = {
+                "hashtag": hashtag,
+                "starttime": "{0}:{1}".format(starthour, startminute),
+                "Duration": "{0} seconds".format(tools.to_sec("{0}:{1}:1".format(hour, minute, 0))
+                                                 )}
+            error = {"message": "Unable to listen to twitter stream at "
+                                "the provided time",
+                     "reason": "Start time has passed"
+                     }
+            return Response.response_error(message, error)
+    else:
+        print "Okay"
+        if now.hour < int(starthour):
+            if now.minute <= int(startminute):
+                # time.sleep((int(startminute) - now.minute) * 60)
+                startStream(hashtag, tools.to_sec("{0}:{1}:1".format(hour, minute, 0)))
+            elif now.minute > int(startminute):
+                message = {
+                    "hashtag": hashtag,
+                    "starttime": "{0}:{1}".format(starthour, startminute),
+                    "Duration": "{0} seconds".format(tools.to_sec("{0}:{1}:1".format(hour, minute, 0))
+                                                     )}
+                error = {"message": "Unable to listen to twitter stream at "
+                                    "the provided time",
+                         "reason": "Start time has passed"
+                         }
+                return Response.response_error(message, error)
 
 
 if __name__ == '__main__':

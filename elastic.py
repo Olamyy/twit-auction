@@ -11,9 +11,9 @@ class Elastic:
 
         mapping = {
             "mappings": {
-                "bid": {
+                "user": {
                     "properties": {
-                        "user_id": {"type": "string"},
+                        "user": {"type": "string"},
                         "created_at": {"type": "string"}
                     }
                 },

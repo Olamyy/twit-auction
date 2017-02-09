@@ -618,7 +618,20 @@ body {
           <th>UserID</th>
           <th>Username</th>
           <th>Tweet Count</th>
+          <th>Hashtag</th>
         </tr>
+          {% for value in users %}
+
+              <tr>
+          <td >{{ value['sn'] }}</td>
+          <td>{{ value['user_id'] }}</td>
+          <td >{{ value['username'] }}</td>
+          <td >{{ value['count'] }}</td>
+          <td >{{ value['hashtag'] }}</td>
+        </tr>
+
+         {% endfor %}
+
       </thead>
       <tbody>
       </tbody>

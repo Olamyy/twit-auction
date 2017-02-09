@@ -1,5 +1,7 @@
 import pika
-from user import UserTwitterModel
+from flask import json
+
+from user import UserModel
 
 
 class RabbitMQ:
@@ -13,8 +15,14 @@ class RabbitMQ:
         self._channel.publish(exchange="", routing_key=self.queue_name, body=data)
 
     def callback(self, ch, method, properties, body):
-        user = UserTwitterModel()
-        user.save()
+        user = UserModel()
+        body = json.loads(body)
+        print body
+        user_id = body["user"]["user_id"]
+        if user.count(user_id) <  0:
+            user.save_user(body)
+        else:
+            user.update_user(user_id)
 
     def consumer(self):
         self._channel.queue_declare(self.queue_name, durable=True)
